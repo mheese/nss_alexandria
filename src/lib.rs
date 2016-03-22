@@ -7,6 +7,7 @@ extern crate libc;
 mod types;
 mod config;
 mod util;
+mod routes;
 
 use std::ffi::{CStr};
 use libc::c_char;
@@ -55,7 +56,7 @@ fn increment_pw_index() {
 #[no_mangle]
 pub extern "C" fn _nss_alexandria_setpwent(_stayopen: c_int) -> nss_status {
     log("_nss_alexandria_setpwent() - start");
-    let entries = types::route_passwd();
+    let entries = routes::passwd();
     log("_nss_alexandria_setpwent() - got route");
     unsafe {
         let b: Box<PwdList> = Box::new(
@@ -124,64 +125,29 @@ pub extern "C" fn _nss_alexandria_getpwent_r(result: *mut passwd, buffer: *mut c
 
 // Find a passwd by uid
 #[no_mangle]
-pub extern "C" fn _nss_alexandria_getpwuid_r(uid: uid_t, mut _result: *mut passwd, mut _buffer: *mut c_char, mut _buflen: size_t, mut _errnop: *mut c_int) -> nss_status {
+pub extern "C" fn _nss_alexandria_getpwuid_r(uid: uid_t, result: *mut passwd, buffer: *mut c_char, buflen: size_t, mut _errnop: *mut c_int) -> nss_status {
     log("_nss_alexandria_getpwuid_r");
-    unsafe {
-        // unfortunately this double check is necessary because glibc calls endpwent and then
-        // another getpwent without hesitating
-        if pw_list.is_null() {
-            // initialize pw_list again
-            _nss_alexandria_setpwent(0);
 
-            // now it should be there
-            if pw_list.is_null() {
-                log("_nss_alexandria_getpwuid_r - pw_list == NULL");
-                return nss_status::NSS_STATUS_UNAVAIL;
-            }
-        }
-    }
-    let s = unsafe { &*pw_list };
-    match s.list.iter().find( |x| x.pw_uid == uid ) {
-        None => nss_status::NSS_STATUS_UNAVAIL,
-        Some(_) => {
-            /*unsafe {
-                let b: Box<passwd> = Box::new(types::entry_to_passwd(e.clone()));
-                result = Box::into_raw(b);
-            }*/
+    match routes::passwd_uid(uid) {
+        None => nss_status::NSS_STATUS_NOTFOUND,
+        Some(entry) => {
+            util::write_passwd(entry, result, buffer, buflen);
             nss_status::NSS_STATUS_SUCCESS
         },
     }
+
 }
 
 // Find a passwd by name
 #[no_mangle]
-pub extern "C" fn _nss_alexandria_getpwnam_r(name: *const c_char, mut _result: *mut passwd, mut _buffer: *mut c_char, mut _buflen: size_t, mut _errnop: *mut c_int) -> nss_status {
+pub extern "C" fn _nss_alexandria_getpwnam_r(name: *const c_char, result: *mut passwd, buffer: *mut c_char, buflen: size_t, mut _errnop: *mut c_int) -> nss_status {
     log("_nss_alexandria_getpwnam_r");
-    unsafe {
-        // unfortunately this double check is necessary because glibc calls endpwent and then
-        // another getpwent without hesitating
-        if pw_list.is_null() {
-            // initialize pw_list again
-            _nss_alexandria_setpwent(0);
-
-            // now it should be there
-            if pw_list.is_null() {
-                log("_nss_alexandria_getpwuid_r - pw_list == NULL");
-                return nss_status::NSS_STATUS_UNAVAIL;
-            }
-        }
-    }
-    let s = unsafe { &*pw_list };
-    let tmp_name = unsafe { CStr::from_ptr(name).to_str().unwrap() };
-    let n = String::from(tmp_name);
-    match s.list.iter().find( |x| x.pw_name == n ) {
-        None => nss_status::NSS_STATUS_UNAVAIL,
-        Some(_) => {
-            /*unsafe {
-                let b: Box<passwd> = Box::new(types::entry_to_passwd(e.clone()));
-                result = Box::into_raw(b);
-            }*/
+    let cname = unsafe { CStr::from_ptr(name) };
+    match routes::passwd_name(cname.to_str().unwrap()) {
+        None => nss_status::NSS_STATUS_NOTFOUND,
+        Some(entry) => {
+            util::write_passwd(entry, result, buffer, buflen);
             nss_status::NSS_STATUS_SUCCESS
-        },
+        }
     }
 }
