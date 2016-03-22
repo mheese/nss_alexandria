@@ -9,7 +9,6 @@ mod config;
 mod util;
 
 use std::ffi::{CString, CStr};
-use libc::c_void;
 use libc::c_char;
 use libc::c_int;
 use libc::size_t;
@@ -116,50 +115,47 @@ pub extern "C" fn _nss_alexandria_getpwent_r(result: *mut passwd, mut buffer: *m
 
     let e = s.list[i].clone();
     log(format!("_nss_alexandria_getpwent_r - entry: {:?}", e).as_str());
-    let mut _result = unsafe { *result };
-    //_result.pw_name = CString::new(e.pw_name).unwrap().into_raw();
-    //_result.pw_passwd = CString::new(e.pw_passwd).unwrap().into_raw();
-    _result.pw_uid = e.pw_uid;
-    _result.pw_gid = e.pw_gid;
-    //_result.pw_gecos = CString::new(e.pw_gecos).unwrap().into_raw();
-    //_result.pw_dir = CString::new(e.pw_dir).unwrap().into_raw();
-    //_result.pw_shell = CString::new(e.pw_shell).unwrap().into_raw();
-
-    //////////////////
-    unsafe { write_bytes(buffer, 0, buflen as usize); }
 
     let next_buf = &mut buffer;
     let mut bufleft = buflen;
 
+    unsafe { write_bytes(*next_buf, 0, buflen as usize); }
+
     let pw_name_len = e.pw_name.len();
     if bufleft <= pw_name_len { return nss_status::NSS_STATUS_UNAVAIL; }
-    unsafe { _result.pw_name = strncpy(*next_buf, CString::new(e.pw_name).unwrap().into_raw(), pw_name_len ); }
-    *next_buf = unsafe { next_buf.offset(pw_name_len as isize + 1) };
+    unsafe { (*result).pw_name = strncpy(*next_buf, CString::new(e.pw_name).unwrap().as_ptr(), pw_name_len); }
+    unsafe { *next_buf = next_buf.offset(pw_name_len as isize + 1) };
     bufleft -= pw_name_len + 1;
 
     let pw_passwd_len = e.pw_passwd.len();
     if bufleft <= pw_passwd_len { return nss_status::NSS_STATUS_UNAVAIL; }
-    unsafe { _result.pw_passwd = strncpy(*next_buf, CString::new(e.pw_passwd).unwrap().into_raw(), pw_passwd_len); }
-    *next_buf = unsafe { next_buf.offset(pw_passwd_len as isize + 1) };
+    unsafe { (*result).pw_passwd = strncpy(*next_buf, CString::new(e.pw_passwd).unwrap().as_ptr(), pw_passwd_len); }
+    unsafe { *next_buf = next_buf.offset(pw_passwd_len as isize  + 1) };
     bufleft -= pw_passwd_len + 1;
+
+    // not 100% clear why this MUST be in an unsafe block
+    unsafe {
+        (*result).pw_uid = e.pw_uid;
+        (*result).pw_gid = e.pw_gid;
+    }
 
     let pw_gecos_len = e.pw_gecos.len();
     if bufleft <= pw_gecos_len { return nss_status::NSS_STATUS_UNAVAIL; }
-    unsafe { _result.pw_gecos = strncpy(*next_buf, CString::new(e.pw_gecos).unwrap().into_raw(), pw_gecos_len); }
-    *next_buf = unsafe { next_buf.offset(pw_gecos_len as isize + 1) };
+    unsafe { (*result).pw_gecos = strncpy(*next_buf, CString::new(e.pw_gecos).unwrap().as_ptr(), pw_gecos_len); }
+    unsafe { *next_buf = next_buf.offset(pw_gecos_len as isize + 1) };
     bufleft -= pw_gecos_len + 1;
 
     let pw_dir_len = e.pw_dir.len();
     if bufleft <= pw_dir_len { return nss_status::NSS_STATUS_UNAVAIL; }
-    unsafe { _result.pw_dir = strncpy(*next_buf, CString::new(e.pw_dir).unwrap().into_raw(), pw_dir_len); }
-    *next_buf = unsafe { next_buf.offset(pw_dir_len as isize + 1) };
+    unsafe { (*result).pw_dir = strncpy(*next_buf, CString::new(e.pw_dir).unwrap().as_ptr(), pw_dir_len); }
+    unsafe { *next_buf = next_buf.offset(pw_dir_len as isize + 1) };
     bufleft -= pw_dir_len + 1;
 
     let pw_shell_len = e.pw_shell.len();
     if bufleft <= pw_shell_len { return nss_status::NSS_STATUS_UNAVAIL; }
-    unsafe { _result.pw_shell = strncpy(*next_buf, CString::new(e.pw_shell).unwrap().into_raw(), pw_shell_len); }
-    *next_buf = unsafe { next_buf.offset(pw_shell_len as isize + 1) };
-    bufleft -= pw_shell_len + 1;
+    unsafe { (*result).pw_shell = strncpy(*next_buf, CString::new(e.pw_shell).unwrap().as_ptr(), pw_shell_len); }
+    unsafe { *next_buf = next_buf.offset(pw_shell_len as isize + 1) };
+    //bufleft -= pw_shell_len + 1;
 
 
 /*if (bufleft <= j_strlen(j_pw_name)) return -2;
@@ -187,7 +183,7 @@ result->pw_gid = json_integer_value(j_pw_gid);
 
 // Find a passwd by uid
 #[no_mangle]
-pub extern "C" fn _nss_alexandria_getpwuid_r(uid: uid_t, mut result: *mut passwd, mut _buffer: *mut c_char, mut _buflen: size_t, mut _errnop: *mut c_int) -> nss_status {
+pub extern "C" fn _nss_alexandria_getpwuid_r(uid: uid_t, mut _result: *mut passwd, mut _buffer: *mut c_char, mut _buflen: size_t, mut _errnop: *mut c_int) -> nss_status {
     log("_nss_alexandria_getpwuid_r");
     unsafe {
         // unfortunately this double check is necessary because glibc calls endpwent and then
@@ -206,11 +202,11 @@ pub extern "C" fn _nss_alexandria_getpwuid_r(uid: uid_t, mut result: *mut passwd
     let s = unsafe { &*pw_list };
     match s.list.iter().find( |x| x.pw_uid == uid ) {
         None => nss_status::NSS_STATUS_UNAVAIL,
-        Some(e) => {
-            unsafe {
+        Some(_) => {
+            /*unsafe {
                 let b: Box<passwd> = Box::new(types::entry_to_passwd(e.clone()));
                 result = Box::into_raw(b);
-            }
+            }*/
             nss_status::NSS_STATUS_SUCCESS
         },
     }
@@ -218,7 +214,7 @@ pub extern "C" fn _nss_alexandria_getpwuid_r(uid: uid_t, mut result: *mut passwd
 
 // Find a passwd by name
 #[no_mangle]
-pub extern "C" fn _nss_alexandria_getpwnam_r(name: *const c_char, mut result: *mut passwd, mut _buffer: *mut c_char, mut _buflen: size_t, mut _errnop: *mut c_int) -> nss_status {
+pub extern "C" fn _nss_alexandria_getpwnam_r(name: *const c_char, mut _result: *mut passwd, mut _buffer: *mut c_char, mut _buflen: size_t, mut _errnop: *mut c_int) -> nss_status {
     log("_nss_alexandria_getpwnam_r");
     unsafe {
         // unfortunately this double check is necessary because glibc calls endpwent and then
@@ -239,11 +235,11 @@ pub extern "C" fn _nss_alexandria_getpwnam_r(name: *const c_char, mut result: *m
     let n = String::from(tmp_name);
     match s.list.iter().find( |x| x.pw_name == n ) {
         None => nss_status::NSS_STATUS_UNAVAIL,
-        Some(e) => {
-            unsafe {
+        Some(_) => {
+            /*unsafe {
                 let b: Box<passwd> = Box::new(types::entry_to_passwd(e.clone()));
                 result = Box::into_raw(b);
-            }
+            }*/
             nss_status::NSS_STATUS_SUCCESS
         },
     }

@@ -1,11 +1,8 @@
 use rustc_serialize::json;
-use libc::passwd;
-use libc::c_char;
 use std::io::Read;
 use hyper::{Client};
 use config::PASSWD_URL_LIST;
 use util::log;
-use std::ffi::CString;
 
 /*
 {
@@ -30,11 +27,11 @@ pub struct AlexandriaPassword {
 }
 
 /*
-fn str_to_mut_char(str: String) -> *mut c_char {
+pub fn str_to_mut_char(str: String) -> *mut c_char {
     let bytes: Vec<u8> = (str + "\0").into_bytes();
     let mut cchars: Vec<c_char> = bytes.iter().map(|&x| x as c_char).collect();
     return cchars.as_mut_ptr();
-}*/
+}
 
 pub fn entry_to_passwd(entry: AlexandriaPassword) -> passwd {
     return passwd {
@@ -46,7 +43,7 @@ pub fn entry_to_passwd(entry: AlexandriaPassword) -> passwd {
         pw_dir: CString::new(entry.pw_dir).unwrap().into_raw(),
         pw_shell: CString::new(entry.pw_shell).unwrap().into_raw(),
     }
-}
+}*/
 
 pub fn route_passwd() -> Vec<AlexandriaPassword> {
     let client = Client::new();
