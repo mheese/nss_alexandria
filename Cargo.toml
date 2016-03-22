@@ -1,0 +1,17 @@
+[package]
+name = "nss_alexandria"
+version = "0.1.0"
+authors = ["Marcus Heese <marcus.heese@gmail.com>"]
+license = "GPL-3.0"
+repository = "https://github.com/mheese/nss_alexandria"
+keywords = ["nss", "alexandria"]
+description = "A NSS library for the Alexandria Directory"
+
+[dependencies]
+libc = "0.2"
+hyper = "0.8"
+rustc-serialize = "0.3"
+lazy_static = "0.1"
+
+[lib]
+crate-type = ["dylib"]
