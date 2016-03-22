@@ -8,7 +8,7 @@ mod types;
 mod config;
 mod util;
 
-use std::ffi::{CString, CStr};
+use std::ffi::{CStr};
 use libc::c_char;
 use libc::c_int;
 use libc::size_t;
@@ -16,8 +16,6 @@ use libc::uid_t;
 use libc::passwd;
 use types::AlexandriaPassword;
 use util::log;
-use std::ptr::write_bytes;
-use libc::strncpy;
 
 
 /**
@@ -89,7 +87,7 @@ pub extern "C" fn _nss_alexandria_endpwent() -> nss_status {
 
 // Called to look up next entry in passwd file
 #[no_mangle]
-pub extern "C" fn _nss_alexandria_getpwent_r(result: *mut passwd, mut buffer: *mut c_char, buflen: size_t, mut _errnop: *mut c_int) -> nss_status {
+pub extern "C" fn _nss_alexandria_getpwent_r(result: *mut passwd, buffer: *mut c_char, buflen: size_t, mut _errnop: *mut c_int) -> nss_status {
     log("_nss_alexandria_getpwent_r - start");
     unsafe {
         // unfortunately this double check is necessary because glibc calls endpwent and then
@@ -116,64 +114,7 @@ pub extern "C" fn _nss_alexandria_getpwent_r(result: *mut passwd, mut buffer: *m
     let e = s.list[i].clone();
     log(format!("_nss_alexandria_getpwent_r - entry: {:?}", e).as_str());
 
-    let next_buf = &mut buffer;
-    let mut bufleft = buflen;
-
-    unsafe { write_bytes(*next_buf, 0, buflen as usize); }
-
-    let pw_name_len = e.pw_name.len();
-    if bufleft <= pw_name_len { return nss_status::NSS_STATUS_UNAVAIL; }
-    unsafe { (*result).pw_name = strncpy(*next_buf, CString::new(e.pw_name).unwrap().as_ptr(), pw_name_len); }
-    unsafe { *next_buf = next_buf.offset(pw_name_len as isize + 1) };
-    bufleft -= pw_name_len + 1;
-
-    let pw_passwd_len = e.pw_passwd.len();
-    if bufleft <= pw_passwd_len { return nss_status::NSS_STATUS_UNAVAIL; }
-    unsafe { (*result).pw_passwd = strncpy(*next_buf, CString::new(e.pw_passwd).unwrap().as_ptr(), pw_passwd_len); }
-    unsafe { *next_buf = next_buf.offset(pw_passwd_len as isize  + 1) };
-    bufleft -= pw_passwd_len + 1;
-
-    // not 100% clear why this MUST be in an unsafe block
-    unsafe {
-        (*result).pw_uid = e.pw_uid;
-        (*result).pw_gid = e.pw_gid;
-    }
-
-    let pw_gecos_len = e.pw_gecos.len();
-    if bufleft <= pw_gecos_len { return nss_status::NSS_STATUS_UNAVAIL; }
-    unsafe { (*result).pw_gecos = strncpy(*next_buf, CString::new(e.pw_gecos).unwrap().as_ptr(), pw_gecos_len); }
-    unsafe { *next_buf = next_buf.offset(pw_gecos_len as isize + 1) };
-    bufleft -= pw_gecos_len + 1;
-
-    let pw_dir_len = e.pw_dir.len();
-    if bufleft <= pw_dir_len { return nss_status::NSS_STATUS_UNAVAIL; }
-    unsafe { (*result).pw_dir = strncpy(*next_buf, CString::new(e.pw_dir).unwrap().as_ptr(), pw_dir_len); }
-    unsafe { *next_buf = next_buf.offset(pw_dir_len as isize + 1) };
-    bufleft -= pw_dir_len + 1;
-
-    let pw_shell_len = e.pw_shell.len();
-    if bufleft <= pw_shell_len { return nss_status::NSS_STATUS_UNAVAIL; }
-    unsafe { (*result).pw_shell = strncpy(*next_buf, CString::new(e.pw_shell).unwrap().as_ptr(), pw_shell_len); }
-    unsafe { *next_buf = next_buf.offset(pw_shell_len as isize + 1) };
-    //bufleft -= pw_shell_len + 1;
-
-
-/*if (bufleft <= j_strlen(j_pw_name)) return -2;
-result->pw_name = strncpy(next_buf, json_string_value(j_pw_name), bufleft);
-next_buf += strlen(result->pw_name) + 1;
-bufleft  -= strlen(result->pw_name) + 1;
-
-if (bufleft <= j_strlen(j_pw_passwd)) return -2;
-result->pw_passwd = strncpy(next_buf, json_string_value(j_pw_passwd), bufleft);
-next_buf += strlen(result->pw_passwd) + 1;
-bufleft  -= strlen(result->pw_passwd) + 1;
-
-// Yay, ints are so easy!
-result->pw_uid = json_integer_value(j_pw_uid);
-result->pw_gid = json_integer_value(j_pw_gid);
-*/
-
-/////////////////
+    util::write_passwd(e, result, buffer, buflen);
 
     log("_nss_alexandria_getpwent_r - incrementing index");
     increment_pw_index();
