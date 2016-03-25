@@ -8,9 +8,9 @@ keywords = ["nss", "alexandria"]
 description = "A NSS library for the Alexandria Directory"
 
 [dependencies]
-libc = "0.2"
-hyper = "0.8"
-rustc-serialize = "0.3"
+libc = { version = "0.2", default-features = false }
+hyper = { version = "0.8", default-features = false }
+rustc-serialize = { version = "0.3", default-features = false }
 
 [lib]
 crate-type = ["dylib"]

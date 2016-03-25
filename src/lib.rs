@@ -1,5 +1,5 @@
+#![feature(static_mutex)]
 #[macro_use]
-//#![feature(static_mutex)]
 
 extern crate rustc_serialize;
 extern crate hyper;
@@ -11,7 +11,7 @@ mod util;
 mod routes;
 
 use std::ffi::{CStr};
-//use std::sync::{StaticMutex, MUTEX_INIT};
+use std::sync::{StaticMutex, MUTEX_INIT};
 use libc::c_char;
 use libc::c_int;
 use libc::size_t;
@@ -40,7 +40,7 @@ impl PwdList {
     }
 }
 
-//static LOCK: StaticMutex = MUTEX_INIT;
+static LOCK: StaticMutex = MUTEX_INIT;
 static mut pw_list: *mut PwdList = 0 as *mut PwdList;
 
 

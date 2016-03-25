@@ -1,7 +1,7 @@
 TODOs
 -----
 
-- cleanup PwdList
+- DONE: cleanup PwdList
 - use mutex on PwdList
 
 - routes need to return error on failure, so that we can return with NSS_STATUS_TRYAGAIN and EAGAIN
