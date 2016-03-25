@@ -9,7 +9,6 @@ use libc::passwd;
 use libc::strncpy;
 use libc::ENOMEM;
 use libc::ERANGE;
-use libc::EAGAIN;
 use types::nss_status;
 use types::nss_status::NSS_STATUS_TRYAGAIN;
 use types::nss_status::NSS_STATUS_SUCCESS;
@@ -91,12 +90,23 @@ pub fn write_passwd(e: AlexandriaPassword, result: *mut passwd, mut buffer: *mut
     // clear buffer with NUL bytes
     unsafe { write_bytes(*next_buf, 0, buflen as usize); }
 
-    if bufleft <= pw_name_len { return NSS_STATUS_TRYAGAIN; }
+    if bufleft <= pw_name_len {
+        // the buffer is not big enough
+        // the glibc NSS documentation demands errnop to be ERANGE
+        // and to return with NSS_STATUS_TRYAGAIN
+        // see: http://www.gnu.org/software/libc/manual/html_node/NSS-Modules-Interface.html#NSS-Modules-Interface
+        unsafe { *errnop = ERANGE; }
+        return NSS_STATUS_TRYAGAIN;
+    }
     unsafe { (*result).pw_name = strncpy(*next_buf, cstr_pw_name.as_ptr(), pw_name_len); }
     unsafe { *next_buf = next_buf.offset(pw_name_len as isize + 1) };
     bufleft -= pw_name_len + 1;
 
-    if bufleft <= pw_passwd_len { return NSS_STATUS_TRYAGAIN; }
+    if bufleft <= pw_passwd_len {
+        // see above
+        unsafe { *errnop = ERANGE; }
+        return NSS_STATUS_TRYAGAIN;
+    }
     unsafe { (*result).pw_passwd = strncpy(*next_buf, cstr_pw_passwd.as_ptr(), pw_passwd_len); }
     unsafe { *next_buf = next_buf.offset(pw_passwd_len as isize  + 1) };
     bufleft -= pw_passwd_len + 1;
@@ -107,18 +117,32 @@ pub fn write_passwd(e: AlexandriaPassword, result: *mut passwd, mut buffer: *mut
         (*result).pw_gid = e.pw_gid;
     }
 
-    if bufleft <= pw_gecos_len { return NSS_STATUS_TRYAGAIN; }
+    if bufleft <= pw_gecos_len {
+        // see above
+        unsafe { *errnop = ERANGE; }
+        return NSS_STATUS_TRYAGAIN;
+    }
     unsafe { (*result).pw_gecos = strncpy(*next_buf, cstr_pw_gecos.as_ptr(), pw_gecos_len); }
     unsafe { *next_buf = next_buf.offset(pw_gecos_len as isize + 1) };
     bufleft -= pw_gecos_len + 1;
 
-    if bufleft <= pw_dir_len { return NSS_STATUS_TRYAGAIN; }
+    if bufleft <= pw_dir_len {
+        // see above
+        unsafe { *errnop = ERANGE; }
+        return NSS_STATUS_TRYAGAIN;
+    }
     unsafe { (*result).pw_dir = strncpy(*next_buf, cstr_pw_dir.as_ptr(), pw_dir_len); }
     unsafe { *next_buf = next_buf.offset(pw_dir_len as isize + 1) };
     bufleft -= pw_dir_len + 1;
 
-    if bufleft <= pw_shell_len { return NSS_STATUS_TRYAGAIN; }
+    if bufleft <= pw_shell_len {
+        // see above
+        unsafe { *errnop = ERANGE; }
+        return NSS_STATUS_TRYAGAIN;
+    }
     unsafe { (*result).pw_shell = strncpy(*next_buf, cstr_pw_shell.as_ptr(), pw_shell_len); }
 
+    // successfully written everytying to result and buffer
+    // errnop does not need to be set
     return NSS_STATUS_SUCCESS;
 }
