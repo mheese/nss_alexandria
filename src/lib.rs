@@ -1,5 +1,6 @@
 #[macro_use]
-extern crate lazy_static;
+//#![feature(static_mutex)]
+
 extern crate rustc_serialize;
 extern crate hyper;
 extern crate libc;
@@ -10,35 +11,38 @@ mod util;
 mod routes;
 
 use std::ffi::{CStr};
+//use std::sync::{StaticMutex, MUTEX_INIT};
 use libc::c_char;
 use libc::c_int;
 use libc::size_t;
 use libc::uid_t;
 use libc::passwd;
+use libc::ENOENT;
 use types::nss_status;
+use types::nss_status::NSS_STATUS_UNAVAIL;
+use types::nss_status::NSS_STATUS_NOTFOUND;
+use types::nss_status::NSS_STATUS_SUCCESS;
 use types::AlexandriaPassword;
 use util::log;
 
 
 struct PwdList {
     list: Vec<AlexandriaPassword>,
-    //index: usize,
+    index: usize,
+}
+impl PwdList {
+    fn get_pw_index(&self) -> usize {
+        self.index
+    }
+
+    fn increment_pw_index(&mut self) {
+        self.index = self.get_pw_index() + 1;
+    }
 }
 
-static mut pw_index: usize = 0;
+//static LOCK: StaticMutex = MUTEX_INIT;
 static mut pw_list: *mut PwdList = 0 as *mut PwdList;
 
-fn get_pw_index() -> usize {
-    unsafe {
-        return pw_index;
-    }
-}
-
-fn increment_pw_index() {
-    unsafe {
-        pw_index = pw_index + 1;
-    }
-}
 
 // Called to open the passwd file
 #[no_mangle]
@@ -49,7 +53,7 @@ pub extern "C" fn _nss_alexandria_setpwent(_stayopen: c_int) -> nss_status {
     unsafe {
         let b: Box<PwdList> = Box::new(
             PwdList {
-                //index: 0,
+                index: 0,
                 list: entries.clone(),
             }
         );
@@ -58,7 +62,7 @@ pub extern "C" fn _nss_alexandria_setpwent(_stayopen: c_int) -> nss_status {
         log("_nss_alexandria_setpwent() - set static mutable");
     }
     log("_nss_alexandria_setpwent() - end");
-    nss_status::NSS_STATUS_SUCCESS
+    NSS_STATUS_SUCCESS
 }
 
 // Called to close the passwd file
@@ -69,9 +73,9 @@ pub extern "C" fn _nss_alexandria_endpwent() -> nss_status {
         if !pw_list.is_null() {
             drop(Box::from_raw(pw_list));
         }
-        pw_index = 0;
+        //pw_index = 0;
     }
-    nss_status::NSS_STATUS_SUCCESS
+    NSS_STATUS_SUCCESS
 }
 
 // Called to look up next entry in passwd file
@@ -88,27 +92,30 @@ pub extern "C" fn _nss_alexandria_getpwent_r(result: *mut passwd, buffer: *mut c
             // now it should be there
             if pw_list.is_null() {
                 log("_nss_alexandria_getpwent_r - pw_list == NULL");
-                return nss_status::NSS_STATUS_UNAVAIL;
+                *errnop = ENOENT;
+                return NSS_STATUS_UNAVAIL;
             }
         }
     }
-    let s = unsafe { &*pw_list };
-    let i = get_pw_index();
+    let mut s = unsafe { &mut *pw_list };
+    let i = s.get_pw_index();
 
     if i >= s.list.len() {
         log("_nss_alexandria_getpwent_r - i >= list.len");
-        return nss_status::NSS_STATUS_NOTFOUND;
+        return NSS_STATUS_NOTFOUND;
     }
 
     let e = s.list[i].clone();
     log(format!("_nss_alexandria_getpwent_r - entry: {:?}", e).as_str());
 
-    util::write_passwd(e, result, buffer, buflen, errnop);
-
-    log("_nss_alexandria_getpwent_r - incrementing index");
-    increment_pw_index();
-    log("_nss_alexandria_getpwent_r - end");
-    nss_status::NSS_STATUS_SUCCESS
+    match util::write_passwd(e, result, buffer, buflen, errnop) {
+        NSS_STATUS_SUCCESS => {
+            log("_nss_alexandria_getpwent_r - incrementing index");
+            s.increment_pw_index();
+            NSS_STATUS_SUCCESS
+        },
+        status => status
+    }
 }
 
 // Find a passwd by uid
@@ -117,11 +124,11 @@ pub extern "C" fn _nss_alexandria_getpwuid_r(uid: uid_t, result: *mut passwd, bu
     log("_nss_alexandria_getpwuid_r");
 
     match routes::passwd_uid(uid) {
-        None => nss_status::NSS_STATUS_NOTFOUND,
-        Some(entry) => {
-            util::write_passwd(entry, result, buffer, buflen, errnop);
-            nss_status::NSS_STATUS_SUCCESS
+        None => {
+            unsafe { *errnop = ENOENT; }
+            NSS_STATUS_NOTFOUND
         },
+        Some(entry) => util::write_passwd(entry, result, buffer, buflen, errnop),
     }
 
 }
@@ -132,10 +139,10 @@ pub extern "C" fn _nss_alexandria_getpwnam_r(name: *const c_char, result: *mut p
     log("_nss_alexandria_getpwnam_r");
     let cname = unsafe { CStr::from_ptr(name) };
     match routes::passwd_name(cname.to_str().unwrap()) {
-        None => nss_status::NSS_STATUS_NOTFOUND,
-        Some(entry) => {
-            util::write_passwd(entry, result, buffer, buflen, errnop);
-            nss_status::NSS_STATUS_SUCCESS
-        }
+        None => {
+            unsafe { *errnop = ENOENT; }
+            NSS_STATUS_NOTFOUND
+        },
+        Some(entry) => util::write_passwd(entry, result, buffer, buflen, errnop),
     }
 }

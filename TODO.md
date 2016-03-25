@@ -11,6 +11,6 @@ TODOs
 - DONE: write_passwd() should write errnop
 - DONE: write_passwd() CString get rid of unwraps() and handle error properly
 - DONE: write_passwd() when bufleft check fails, return NSS_STATUS_TRYAGAIN and set errnop to ERANGE
-- write_passwd() make unsafe blocks easier to read
+- DONE: write_passwd() make unsafe blocks easier to read
 
 - remove logging once satisfied

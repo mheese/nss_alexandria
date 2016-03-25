@@ -98,8 +98,11 @@ pub fn write_passwd(e: AlexandriaPassword, result: *mut passwd, mut buffer: *mut
         unsafe { *errnop = ERANGE; }
         return NSS_STATUS_TRYAGAIN;
     }
-    unsafe { (*result).pw_name = strncpy(*next_buf, cstr_pw_name.as_ptr(), pw_name_len); }
-    unsafe { *next_buf = next_buf.offset(pw_name_len as isize + 1) };
+    unsafe {
+        // as_ptr() *MUST* be called inside the unsafe block!
+        (*result).pw_name = strncpy(*next_buf, cstr_pw_name.as_ptr(), pw_name_len);
+        *next_buf = next_buf.offset(pw_name_len as isize + 1)
+    }
     bufleft -= pw_name_len + 1;
 
     if bufleft <= pw_passwd_len {
@@ -107,8 +110,11 @@ pub fn write_passwd(e: AlexandriaPassword, result: *mut passwd, mut buffer: *mut
         unsafe { *errnop = ERANGE; }
         return NSS_STATUS_TRYAGAIN;
     }
-    unsafe { (*result).pw_passwd = strncpy(*next_buf, cstr_pw_passwd.as_ptr(), pw_passwd_len); }
-    unsafe { *next_buf = next_buf.offset(pw_passwd_len as isize  + 1) };
+    unsafe {
+        // as_ptr() *MUST* be called inside the unsafe block!
+        (*result).pw_passwd = strncpy(*next_buf, cstr_pw_passwd.as_ptr(), pw_passwd_len);
+        *next_buf = next_buf.offset(pw_passwd_len as isize  + 1)
+    }
     bufleft -= pw_passwd_len + 1;
 
     // not 100% clear why this MUST be in an unsafe block
@@ -122,8 +128,11 @@ pub fn write_passwd(e: AlexandriaPassword, result: *mut passwd, mut buffer: *mut
         unsafe { *errnop = ERANGE; }
         return NSS_STATUS_TRYAGAIN;
     }
-    unsafe { (*result).pw_gecos = strncpy(*next_buf, cstr_pw_gecos.as_ptr(), pw_gecos_len); }
-    unsafe { *next_buf = next_buf.offset(pw_gecos_len as isize + 1) };
+    unsafe {
+        // as_ptr() *MUST* be called inside the unsafe block!
+        (*result).pw_gecos = strncpy(*next_buf, cstr_pw_gecos.as_ptr(), pw_gecos_len);
+        *next_buf = next_buf.offset(pw_gecos_len as isize + 1)
+    }
     bufleft -= pw_gecos_len + 1;
 
     if bufleft <= pw_dir_len {
@@ -131,8 +140,11 @@ pub fn write_passwd(e: AlexandriaPassword, result: *mut passwd, mut buffer: *mut
         unsafe { *errnop = ERANGE; }
         return NSS_STATUS_TRYAGAIN;
     }
-    unsafe { (*result).pw_dir = strncpy(*next_buf, cstr_pw_dir.as_ptr(), pw_dir_len); }
-    unsafe { *next_buf = next_buf.offset(pw_dir_len as isize + 1) };
+    unsafe {
+        // as_ptr() *MUST* be called inside the unsafe block!
+        (*result).pw_dir = strncpy(*next_buf, cstr_pw_dir.as_ptr(), pw_dir_len);
+        *next_buf = next_buf.offset(pw_dir_len as isize + 1)
+    }
     bufleft -= pw_dir_len + 1;
 
     if bufleft <= pw_shell_len {
@@ -140,7 +152,9 @@ pub fn write_passwd(e: AlexandriaPassword, result: *mut passwd, mut buffer: *mut
         unsafe { *errnop = ERANGE; }
         return NSS_STATUS_TRYAGAIN;
     }
-    unsafe { (*result).pw_shell = strncpy(*next_buf, cstr_pw_shell.as_ptr(), pw_shell_len); }
+    unsafe {
+        (*result).pw_shell = strncpy(*next_buf, cstr_pw_shell.as_ptr(), pw_shell_len);
+    }
 
     // successfully written everytying to result and buffer
     // errnop does not need to be set
