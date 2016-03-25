@@ -15,22 +15,10 @@ use libc::c_int;
 use libc::size_t;
 use libc::uid_t;
 use libc::passwd;
+use types::nss_status;
 use types::AlexandriaPassword;
 use util::log;
 
-
-/**
- * This is the enum from glibc with the return stati that all implemented NSS methods must use
- */
-#[repr(C)]
-pub enum nss_status
-{
-  NSS_STATUS_TRYAGAIN = -2,
-  NSS_STATUS_UNAVAIL,
-  NSS_STATUS_NOTFOUND,
-  NSS_STATUS_SUCCESS,
-  NSS_STATUS_RETURN
-}
 
 struct PwdList {
     list: Vec<AlexandriaPassword>,
@@ -88,7 +76,7 @@ pub extern "C" fn _nss_alexandria_endpwent() -> nss_status {
 
 // Called to look up next entry in passwd file
 #[no_mangle]
-pub extern "C" fn _nss_alexandria_getpwent_r(result: *mut passwd, buffer: *mut c_char, buflen: size_t, mut _errnop: *mut c_int) -> nss_status {
+pub extern "C" fn _nss_alexandria_getpwent_r(result: *mut passwd, buffer: *mut c_char, buflen: size_t, mut errnop: *mut c_int) -> nss_status {
     log("_nss_alexandria_getpwent_r - start");
     unsafe {
         // unfortunately this double check is necessary because glibc calls endpwent and then
@@ -115,7 +103,7 @@ pub extern "C" fn _nss_alexandria_getpwent_r(result: *mut passwd, buffer: *mut c
     let e = s.list[i].clone();
     log(format!("_nss_alexandria_getpwent_r - entry: {:?}", e).as_str());
 
-    util::write_passwd(e, result, buffer, buflen);
+    util::write_passwd(e, result, buffer, buflen, errnop);
 
     log("_nss_alexandria_getpwent_r - incrementing index");
     increment_pw_index();
@@ -125,13 +113,13 @@ pub extern "C" fn _nss_alexandria_getpwent_r(result: *mut passwd, buffer: *mut c
 
 // Find a passwd by uid
 #[no_mangle]
-pub extern "C" fn _nss_alexandria_getpwuid_r(uid: uid_t, result: *mut passwd, buffer: *mut c_char, buflen: size_t, mut _errnop: *mut c_int) -> nss_status {
+pub extern "C" fn _nss_alexandria_getpwuid_r(uid: uid_t, result: *mut passwd, buffer: *mut c_char, buflen: size_t, mut errnop: *mut c_int) -> nss_status {
     log("_nss_alexandria_getpwuid_r");
 
     match routes::passwd_uid(uid) {
         None => nss_status::NSS_STATUS_NOTFOUND,
         Some(entry) => {
-            util::write_passwd(entry, result, buffer, buflen);
+            util::write_passwd(entry, result, buffer, buflen, errnop);
             nss_status::NSS_STATUS_SUCCESS
         },
     }
@@ -140,13 +128,13 @@ pub extern "C" fn _nss_alexandria_getpwuid_r(uid: uid_t, result: *mut passwd, bu
 
 // Find a passwd by name
 #[no_mangle]
-pub extern "C" fn _nss_alexandria_getpwnam_r(name: *const c_char, result: *mut passwd, buffer: *mut c_char, buflen: size_t, mut _errnop: *mut c_int) -> nss_status {
+pub extern "C" fn _nss_alexandria_getpwnam_r(name: *const c_char, result: *mut passwd, buffer: *mut c_char, buflen: size_t, mut errnop: *mut c_int) -> nss_status {
     log("_nss_alexandria_getpwnam_r");
     let cname = unsafe { CStr::from_ptr(name) };
     match routes::passwd_name(cname.to_str().unwrap()) {
         None => nss_status::NSS_STATUS_NOTFOUND,
         Some(entry) => {
-            util::write_passwd(entry, result, buffer, buflen);
+            util::write_passwd(entry, result, buffer, buflen, errnop);
             nss_status::NSS_STATUS_SUCCESS
         }
     }

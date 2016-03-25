@@ -1,3 +1,17 @@
+
+/**
+ * This is the enum from glibc with the return stati that all implemented NSS methods must use
+ */
+#[repr(C)]
+pub enum nss_status
+{
+  NSS_STATUS_TRYAGAIN = -2,
+  NSS_STATUS_UNAVAIL,
+  NSS_STATUS_NOTFOUND,
+  NSS_STATUS_SUCCESS,
+  NSS_STATUS_RETURN
+}
+
 /*
 {
   pw_name: "gary",
