@@ -41,7 +41,7 @@ pub fn write_passwd(e: AlexandriaPassword, result: *mut passwd, mut buffer: *mut
     // pw_name
     let pw_name_len = e.pw_name.len();
     let cstr_pw_name = match CString::new(e.pw_name) {
-        Ok(cstr) => cstr.as_ptr(),
+        Ok(cstr) => cstr,
         Err(_) => {
             unsafe { *errnop = ENOMEM; }
             return NSS_STATUS_TRYAGAIN;
@@ -51,7 +51,7 @@ pub fn write_passwd(e: AlexandriaPassword, result: *mut passwd, mut buffer: *mut
     // pw_passwd
     let pw_passwd_len = e.pw_passwd.len();
     let cstr_pw_passwd = match CString::new(e.pw_passwd) {
-        Ok(cstr) => cstr.as_ptr(),
+        Ok(cstr) => cstr,
         Err(_) => {
             unsafe { *errnop = ENOMEM; }
             return NSS_STATUS_TRYAGAIN;
@@ -61,7 +61,7 @@ pub fn write_passwd(e: AlexandriaPassword, result: *mut passwd, mut buffer: *mut
     // pw_gecos
     let pw_gecos_len = e.pw_gecos.len();
     let cstr_pw_gecos = match CString::new(e.pw_gecos) {
-        Ok(cstr) => cstr.as_ptr(),
+        Ok(cstr) => cstr,
         Err(_) => {
             unsafe { *errnop = ENOMEM; }
             return NSS_STATUS_TRYAGAIN;
@@ -71,7 +71,7 @@ pub fn write_passwd(e: AlexandriaPassword, result: *mut passwd, mut buffer: *mut
     // pw_dir
     let pw_dir_len = e.pw_dir.len();
     let cstr_pw_dir = match CString::new(e.pw_dir) {
-        Ok(cstr) => cstr.as_ptr(),
+        Ok(cstr) => cstr,
         Err(_) => {
             unsafe { *errnop = ENOMEM; }
             return NSS_STATUS_TRYAGAIN;
@@ -81,7 +81,7 @@ pub fn write_passwd(e: AlexandriaPassword, result: *mut passwd, mut buffer: *mut
     // pw_shell
     let pw_shell_len = e.pw_shell.len();
     let cstr_pw_shell = match CString::new(e.pw_shell) {
-        Ok(cstr) => cstr.as_ptr(),
+        Ok(cstr) => cstr,
         Err(_) => {
             unsafe { *errnop = ENOMEM; }
             return NSS_STATUS_TRYAGAIN;
@@ -92,12 +92,12 @@ pub fn write_passwd(e: AlexandriaPassword, result: *mut passwd, mut buffer: *mut
     unsafe { write_bytes(*next_buf, 0, buflen as usize); }
 
     if bufleft <= pw_name_len { return NSS_STATUS_TRYAGAIN; }
-    unsafe { (*result).pw_name = strncpy(*next_buf, cstr_pw_name, pw_name_len); }
+    unsafe { (*result).pw_name = strncpy(*next_buf, cstr_pw_name.as_ptr(), pw_name_len); }
     unsafe { *next_buf = next_buf.offset(pw_name_len as isize + 1) };
     bufleft -= pw_name_len + 1;
 
     if bufleft <= pw_passwd_len { return NSS_STATUS_TRYAGAIN; }
-    unsafe { (*result).pw_passwd = strncpy(*next_buf, cstr_pw_passwd, pw_passwd_len); }
+    unsafe { (*result).pw_passwd = strncpy(*next_buf, cstr_pw_passwd.as_ptr(), pw_passwd_len); }
     unsafe { *next_buf = next_buf.offset(pw_passwd_len as isize  + 1) };
     bufleft -= pw_passwd_len + 1;
 
@@ -108,17 +108,17 @@ pub fn write_passwd(e: AlexandriaPassword, result: *mut passwd, mut buffer: *mut
     }
 
     if bufleft <= pw_gecos_len { return NSS_STATUS_TRYAGAIN; }
-    unsafe { (*result).pw_gecos = strncpy(*next_buf, cstr_pw_gecos, pw_gecos_len); }
+    unsafe { (*result).pw_gecos = strncpy(*next_buf, cstr_pw_gecos.as_ptr(), pw_gecos_len); }
     unsafe { *next_buf = next_buf.offset(pw_gecos_len as isize + 1) };
     bufleft -= pw_gecos_len + 1;
 
     if bufleft <= pw_dir_len { return NSS_STATUS_TRYAGAIN; }
-    unsafe { (*result).pw_dir = strncpy(*next_buf, cstr_pw_dir, pw_dir_len); }
+    unsafe { (*result).pw_dir = strncpy(*next_buf, cstr_pw_dir.as_ptr(), pw_dir_len); }
     unsafe { *next_buf = next_buf.offset(pw_dir_len as isize + 1) };
     bufleft -= pw_dir_len + 1;
 
     if bufleft <= pw_shell_len { return NSS_STATUS_TRYAGAIN; }
-    unsafe { (*result).pw_shell = strncpy(*next_buf, cstr_pw_shell, pw_shell_len); }
+    unsafe { (*result).pw_shell = strncpy(*next_buf, cstr_pw_shell.as_ptr(), pw_shell_len); }
 
     return NSS_STATUS_SUCCESS;
 }
