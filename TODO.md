@@ -1,11 +1,11 @@
 TODOs
 -----
 
-for version 0.2.0: *group and shadow dbs*
+for v0.2.0: *group and shadow dbs*
 - implement group database
 - implement shadow database
 
-for version 0.3.0: *move to unix sockets*
+for v0.3.0: *move to unix sockets*
 - move HTTP service requests to UNIX sockets
 - implement own socket files for different databases
 - shadow database needs 2 socket types:
