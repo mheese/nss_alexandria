@@ -1,16 +1,16 @@
 TODOs
 -----
 
-- DONE: cleanup PwdList
-- DONE: use mutex on PwdList
+for version 0.2.0: *group and shadow dbs*
+- implement group database
+- implement shadow database
 
-- DONE: routes need to return error on failure, so that we can return with NSS_STATUS_TRYAGAIN and EAGAIN
-- DONE: check that routes abort if service not up
+for version 0.3.0: *move to unix sockets*
+- move HTTP service requests to UNIX sockets
+- implement own socket files for different databases
+- shadow database needs 2 socket types:
+  1. private (root and suid/guid of socket file only) can read it and therefore retrieve shadow entries
+  2. "public" (users with the calling UID can query their own entry (maybe not even the actual shadow entry))
 
-- DONE: write_passwd() should return nss_status directly
-- DONE: write_passwd() should write errnop
-- DONE: write_passwd() CString get rid of unwraps() and handle error properly
-- DONE: write_passwd() when bufleft check fails, return NSS_STATUS_TRYAGAIN and set errnop to ERANGE
-- DONE: write_passwd() make unsafe blocks easier to read
-
-- DONE: remove logging once satisfied
+long-term: *move to D-BUS ?*
+- use D-BUS instead of own UNIX sockets (that's what it is good for in the end)
