@@ -6,9 +6,9 @@
 - implement shadow database
 
 *Items:*
-- convert PwdList to DbList<T>
+- DONE: convert PwdList to DbList<T>
 - DONE: refactor PW_LIST to PWD_LIST
-- refactor LIB_LOCK to PWD_LIBLOCK
+- DONE: refactor LIB_LOCK to PWD_LIBLOCK
 - implement AlexandriaGroup type
 - implement AlexandriaShadow type
 - implement write_group

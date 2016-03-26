@@ -29,12 +29,12 @@ use util::log;
 
 // This struct keeps the state for the _nss_alexandria_getpwent_r function
 // It stores/caches the previously retrieved list and then increments the index here
-struct PwdList {
-    list: Vec<AlexandriaPassword>,
+struct DbList<T> {
+    list: Vec<T>,
     index: usize,
 }
-impl PwdList {
-    fn get_current_entry(&self) -> Option<&AlexandriaPassword> {
+impl<T> DbList<T> {
+    fn get_current_entry(&self) -> Option<&T> {
         let i = self.get_index();
         if self.list.is_empty() || i >= self.list.len() {
             None
@@ -54,8 +54,8 @@ impl PwdList {
 
 // This is global C-style library state for the _nss_alexandria_getpwent_r function
 // We use a StaticMutex to lock the library
-static LIB_LOCK: StaticMutex = MUTEX_INIT;
-static mut PWD_LIST: *mut PwdList = 0 as *mut PwdList;
+static PWD_LIB_LOCK: StaticMutex = MUTEX_INIT;
+static mut PWD_LIST: *mut DbList<AlexandriaPassword> = 0 as *mut DbList<AlexandriaPassword>;
 
 
 // Called to open the passwd file
@@ -72,15 +72,15 @@ pub extern "C" fn _nss_alexandria_setpwent(_stayopen: c_int) -> nss_status {
     };
 
     unsafe {
-        let _locked = match LIB_LOCK.try_lock() {
+        let _locked = match PWD_LIB_LOCK.try_lock() {
             Ok(s) => s,
             Err(_) => {
                 return NSS_STATUS_TRYAGAIN;
             }
         };
 
-        let b: Box<PwdList> = Box::new(
-            PwdList {
+        let b: Box<DbList<AlexandriaPassword>> = Box::new(
+            DbList {
                 index: 0,
                 list: entries.clone(),
             }
@@ -97,7 +97,7 @@ pub extern "C" fn _nss_alexandria_setpwent(_stayopen: c_int) -> nss_status {
 pub extern "C" fn _nss_alexandria_endpwent() -> nss_status {
     log("_nss_alexandria_endpwent");
     unsafe {
-        let _locked = match LIB_LOCK.try_lock() {
+        let _locked = match PWD_LIB_LOCK.try_lock() {
             Ok(s) => s,
             Err(_) => {
                 return NSS_STATUS_TRYAGAIN;
@@ -133,8 +133,8 @@ pub extern "C" fn _nss_alexandria_getpwent_r(result: *mut passwd, buffer: *mut c
         }
     }
 
-    // Acquire LIB_LOCK, or fail utterly, but don't block
-    let _locked = match LIB_LOCK.try_lock() {
+    // Acquire PWD_LIB_LOCK, or fail utterly, but don't block
+    let _locked = match PWD_LIB_LOCK.try_lock() {
         Ok(s) => s,
         Err(_) => {
             unsafe { *errnop = EAGAIN; }
