@@ -16,15 +16,18 @@ use libc::c_char;
 use libc::c_int;
 use libc::size_t;
 use libc::uid_t;
-use libc::passwd;
+use libc::gid_t;
 use libc::ENOENT;
 use libc::EAGAIN;
+use libc::passwd;
+use types::group;
 use types::nss_status;
 use types::nss_status::NSS_STATUS_UNAVAIL;
 use types::nss_status::NSS_STATUS_NOTFOUND;
 use types::nss_status::NSS_STATUS_SUCCESS;
 use types::nss_status::NSS_STATUS_TRYAGAIN;
 use types::AlexandriaPassword;
+use types::AlexandriaGroup;
 use util::log;
 
 // This struct keeps the state for the _nss_alexandria_getpwent_r function
@@ -206,4 +209,26 @@ pub extern "C" fn _nss_alexandria_getpwnam_r(name: *const c_char, result: *mut p
             Some(entry) => util::write_passwd(entry, result, buffer, buflen, errnop),
         },
     }
+}
+
+// Find a group by gid
+#[no_mangle]
+pub extern "C" fn _nss_alexandria_getgrgid_r(gid: gid_t, result: *mut group, buffer: *mut c_char, buflen: size_t, mut errnop: *mut c_int) -> nss_status {
+    log("_nss_alexandria_getgrgid_r");
+
+    match routes::group_gid(gid) {
+        Err(e) => {
+            log(format!("_nss_alexandria_getgrgid_r(): error retrieving group entry from Alexandria service: {}", e).as_str());
+            unsafe { *errnop = EAGAIN; }
+            NSS_STATUS_TRYAGAIN
+        },
+        Ok(possible_entry) => match possible_entry {
+            None => {
+                unsafe { *errnop = ENOENT; }
+                NSS_STATUS_NOTFOUND
+            },
+            Some(entry) => util::write_group(entry, result, buffer, buflen, errnop),
+        },
+    }
+
 }

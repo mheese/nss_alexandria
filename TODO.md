@@ -13,11 +13,11 @@
 - DONE: implement AlexandriaShadow type
 - DONE: implement C group type (because currently not in libc)
 - DONE: implement C shadow type (because currently not in libc)
-- implement write_group
+- DONE: implement write_group
 - implement write_shadow
-- implement group route
-- implement group_uid route
-- implement group_name route
+- DONE: implement group route
+- DONE: implement group_uid route
+- DONE: implement group_name route
 - implement shadow route
 - implement shadow_name route
 - implement all nss_alexandria C functions

@@ -1,18 +1,23 @@
 
 use std::ffi::{CString};
 use std::ptr::write_bytes;
+use std::ptr::copy;
 use libc::c_void;
 use libc::c_char;
 use libc::c_int;
 use libc::size_t;
-use libc::passwd;
 use libc::strncpy;
 use libc::ENOMEM;
 use libc::ERANGE;
+use libc::passwd;
+use types::group;
+use types::spwd;
 use types::nss_status;
 use types::nss_status::NSS_STATUS_TRYAGAIN;
 use types::nss_status::NSS_STATUS_SUCCESS;
 use types::AlexandriaPassword;
+use types::AlexandriaGroup;
+use types::AlexandriaShadow;
 
 /* A reference to the syslog method in glibc */
 extern {
@@ -154,6 +159,102 @@ pub fn write_passwd(e: AlexandriaPassword, result: *mut passwd, mut buffer: *mut
     }
     unsafe {
         (*result).pw_shell = strncpy(*next_buf, cstr_pw_shell.as_ptr(), pw_shell_len);
+    }
+
+    // successfully written everytying to result and buffer
+    // errnop does not need to be set
+    return NSS_STATUS_SUCCESS;
+}
+
+pub fn write_group(e: AlexandriaGroup, result: *mut group, mut buffer: *mut c_char, buflen: size_t, mut errnop: *mut c_int) -> nss_status {
+    let next_buf = &mut buffer;
+    let mut bufleft = buflen;
+
+    // let's carefully craft C strings here:
+    // - NSS is expecting ERANGE in errnop only if the buffer is too small
+    // - however, we still want to try again, so we do the following for error handling:
+    // - NSS_STATUS_TRYAGAIN to retry
+    // - ENOMEM for errnop
+    // TODO: a macro could make that part shorter
+
+    // gr_name
+    let gr_name_len = e.gr_name.len();
+    let cstr_gr_name = match CString::new(e.gr_name) {
+        Ok(cstr) => cstr,
+        Err(_) => {
+            unsafe { *errnop = ENOMEM; }
+            return NSS_STATUS_TRYAGAIN;
+        },
+    };
+
+    // gr_passwd
+    let gr_passwd_len = e.gr_passwd.len();
+    let cstr_gr_passwd = match CString::new(e.gr_passwd) {
+        Ok(cstr) => cstr,
+        Err(_) => {
+            unsafe { *errnop = ENOMEM; }
+            return NSS_STATUS_TRYAGAIN;
+        }
+    };
+
+    // gr_mem
+    let cstr_gr_mems_len = e.gr_mem.len();
+    let mut cstr_gr_mems: Vec<*mut c_char> = Vec::with_capacity(cstr_gr_mems_len);
+    for mem in e.gr_mem {
+        let cstr_gr_mem = match CString::new(mem) {
+            Ok(cstr) => cstr.into_raw(),
+            Err(_) => {
+                unsafe { *errnop = ENOMEM; }
+                return NSS_STATUS_TRYAGAIN;
+            },
+        };
+        cstr_gr_mems.push(cstr_gr_mem);
+    }
+    let cstr_gr_mems_cap = cstr_gr_mems.capacity() + 1;
+
+    // clear buffer with NUL bytes
+    unsafe { write_bytes(*next_buf, 0, buflen as usize); }
+
+    if bufleft <= gr_name_len {
+        // the buffer is not big enough
+        // the glibc NSS documentation demands errnop to be ERANGE
+        // and to return with NSS_STATUS_TRYAGAIN
+        // see: http://www.gnu.org/software/libc/manual/html_node/NSS-Modules-Interface.html#NSS-Modules-Interface
+        unsafe { *errnop = ERANGE; }
+        return NSS_STATUS_TRYAGAIN;
+    }
+    unsafe {
+        // as_ptr() *MUST* be called inside the unsafe block!
+        (*result).gr_name = strncpy(*next_buf, cstr_gr_name.as_ptr(), gr_name_len);
+        *next_buf = next_buf.offset(gr_name_len as isize + 1)
+    }
+    bufleft -= gr_name_len + 1;
+
+    if bufleft <= gr_passwd_len {
+        // see above
+        unsafe { *errnop = ERANGE; }
+        return NSS_STATUS_TRYAGAIN;
+    }
+    unsafe {
+        // as_ptr() *MUST* be called inside the unsafe block!
+        (*result).gr_passwd = strncpy(*next_buf, cstr_gr_passwd.as_ptr(), gr_passwd_len);
+        *next_buf = next_buf.offset(gr_passwd_len as isize  + 1)
+    }
+    bufleft -= gr_passwd_len + 1;
+
+    // not 100% clear why this MUST be in an unsafe block
+    unsafe {
+        (*result).gr_gid = e.gr_gid;
+    }
+
+    if bufleft <= cstr_gr_mems_cap {
+        unsafe { *errnop = ERANGE; }
+        return NSS_STATUS_TRYAGAIN;
+    }
+
+    unsafe {
+        (*result).gr_mem = *next_buf as *mut *mut c_char;
+        copy(cstr_gr_mems.as_ptr(), *next_buf as *mut *mut c_char, cstr_gr_mems_len);
     }
 
     // successfully written everytying to result and buffer

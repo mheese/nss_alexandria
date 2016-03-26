@@ -141,8 +141,8 @@ pub struct AlexandriaPassword {
 #[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
 pub struct AlexandriaGroup {
     pub gr_name: String,
-    pub gr_gid: u32,
     pub gr_passwd: String,
+    pub gr_gid: u32,
     pub gr_mem: Vec<String>,
 }
 
