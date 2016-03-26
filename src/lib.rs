@@ -55,7 +55,7 @@ impl PwdList {
 // This is global C-style library state for the _nss_alexandria_getpwent_r function
 // We use a StaticMutex to lock the library
 static LIB_LOCK: StaticMutex = MUTEX_INIT;
-static mut PW_LIST: *mut PwdList = 0 as *mut PwdList;
+static mut PWD_LIST: *mut PwdList = 0 as *mut PwdList;
 
 
 // Called to open the passwd file
@@ -86,7 +86,7 @@ pub extern "C" fn _nss_alexandria_setpwent(_stayopen: c_int) -> nss_status {
             }
         );
 
-        PW_LIST = Box::into_raw(b);
+        PWD_LIST = Box::into_raw(b);
     }
 
     NSS_STATUS_SUCCESS
@@ -104,8 +104,8 @@ pub extern "C" fn _nss_alexandria_endpwent() -> nss_status {
             }
         };
 
-        if !PW_LIST.is_null() {
-            drop(Box::from_raw(PW_LIST));
+        if !PWD_LIST.is_null() {
+            drop(Box::from_raw(PWD_LIST));
         }
     }
 
@@ -121,12 +121,12 @@ pub extern "C" fn _nss_alexandria_getpwent_r(result: *mut passwd, buffer: *mut c
     unsafe {
         // unfortunately this double check is necessary because glibc might call endpwent and then
         // another getpwent without hesitating
-        if PW_LIST.is_null() {
-            // initialize PW_LIST again
+        if PWD_LIST.is_null() {
+            // initialize PWD_LIST again
             _nss_alexandria_setpwent(0);
 
             // now it should be there
-            if PW_LIST.is_null() {
+            if PWD_LIST.is_null() {
                 *errnop = ENOENT;
                 return NSS_STATUS_UNAVAIL;
             }
@@ -142,7 +142,7 @@ pub extern "C" fn _nss_alexandria_getpwent_r(result: *mut passwd, buffer: *mut c
         }
     };
 
-    let mut pwl = unsafe { &mut *PW_LIST };
+    let mut pwl = unsafe { &mut *PWD_LIST };
 
     // cloning is the only reasonable way to go here
     let e = match pwl.get_current_entry() {

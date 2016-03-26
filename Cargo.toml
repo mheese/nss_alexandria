@@ -1,6 +1,6 @@
 [package]
 name = "nss_alexandria"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Marcus Heese <marcus.heese@gmail.com>"]
 license = "GPL-3.0"
 repository = "https://github.com/mheese/nss_alexandria"

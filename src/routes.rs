@@ -1,15 +1,14 @@
-use std::time::Duration;
-use rustc_serialize::json;
 use std::io::Read;
+use std::time::Duration;
+use libc::uid_t;
 use hyper::{Client};
 use hyper::status::StatusCode;
+use rustc_serialize::json;
 use config::PASSWD_URL;
 use config::HTTP_READ_TIMEOUT_MS;
 use config::HTTP_WRITE_TIMEOUT_MS;
-use util::log;
 use types::AlexandriaPassword;
 use types::AlexandriaSvcError;
-use libc::uid_t;
 
 
 pub fn passwd() -> Result<Vec<AlexandriaPassword>, AlexandriaSvcError> {
