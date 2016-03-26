@@ -63,7 +63,13 @@ static mut PW_LIST: *mut PwdList = 0 as *mut PwdList;
 pub extern "C" fn _nss_alexandria_setpwent(_stayopen: c_int) -> nss_status {
     log("_nss_alexandria_setpwent()");
 
-    let entries = routes::passwd();
+    let entries = match routes::passwd() {
+        Ok(entries) => entries,
+        Err(e) => {
+            log(format!("_nss_alexandria_setpwent(): error retrieving passwd list from Alexandria service: {}", e).as_str());
+            return NSS_STATUS_TRYAGAIN;
+        },
+    };
 
     unsafe {
         let _locked = match LIB_LOCK.try_lock() {
@@ -163,11 +169,18 @@ pub extern "C" fn _nss_alexandria_getpwuid_r(uid: uid_t, result: *mut passwd, bu
     log("_nss_alexandria_getpwuid_r");
 
     match routes::passwd_uid(uid) {
-        None => {
-            unsafe { *errnop = ENOENT; }
-            NSS_STATUS_NOTFOUND
+        Err(e) => {
+            log(format!("_nss_alexandria_getpwuid_r(): error retrieving passwd entry from Alexandria service: {}", e).as_str());
+            unsafe { *errnop = EAGAIN; }
+            NSS_STATUS_TRYAGAIN
         },
-        Some(entry) => util::write_passwd(entry, result, buffer, buflen, errnop),
+        Ok(possible_entry) => match possible_entry {
+            None => {
+                unsafe { *errnop = ENOENT; }
+                NSS_STATUS_NOTFOUND
+            },
+            Some(entry) => util::write_passwd(entry, result, buffer, buflen, errnop),
+        },
     }
 
 }
@@ -180,10 +193,17 @@ pub extern "C" fn _nss_alexandria_getpwnam_r(name: *const c_char, result: *mut p
     let cname = unsafe { CStr::from_ptr(name) };
 
     match routes::passwd_name(cname.to_str().unwrap()) {
-        None => {
-            unsafe { *errnop = ENOENT; }
-            NSS_STATUS_NOTFOUND
+        Err(e) => {
+            log(format!("_nss_alexandria_getpwnam_r(): error retrieving passwd entry from Alexandria service: {}", e).as_str());
+            unsafe { *errnop = EAGAIN; }
+            NSS_STATUS_TRYAGAIN
         },
-        Some(entry) => util::write_passwd(entry, result, buffer, buflen, errnop),
+        Ok(possible_entry) => match possible_entry {
+            None => {
+                unsafe { *errnop = ENOENT; }
+                NSS_STATUS_NOTFOUND
+            },
+            Some(entry) => util::write_passwd(entry, result, buffer, buflen, errnop),
+        },
     }
 }

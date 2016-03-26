@@ -4,8 +4,8 @@ TODOs
 - DONE: cleanup PwdList
 - DONE: use mutex on PwdList
 
-- routes need to return error on failure, so that we can return with NSS_STATUS_TRYAGAIN and EAGAIN
-- check that routes abort if service not up
+- DONE: routes need to return error on failure, so that we can return with NSS_STATUS_TRYAGAIN and EAGAIN
+- DONE: check that routes abort if service not up
 
 - DONE: write_passwd() should return nss_status directly
 - DONE: write_passwd() should write errnop
