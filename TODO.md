@@ -9,8 +9,10 @@
 - DONE: convert PwdList to DbList<T>
 - DONE: refactor PW_LIST to PWD_LIST
 - DONE: refactor LIB_LOCK to PWD_LIBLOCK
-- implement AlexandriaGroup type
-- implement AlexandriaShadow type
+- DONE: implement AlexandriaGroup type
+- DONE: implement AlexandriaShadow type
+- DONE: implement C group type (because currently not in libc)
+- DONE: implement C shadow type (because currently not in libc)
 - implement write_group
 - implement write_shadow
 - implement group route

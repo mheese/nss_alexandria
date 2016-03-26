@@ -1,6 +1,10 @@
 use std::io;
 use std::error;
 use std::fmt;
+use libc::c_char;
+use libc::gid_t;
+use libc::c_long;
+use libc::c_ulong;
 use hyper;
 use rustc_serialize;
 
@@ -15,6 +19,29 @@ pub enum nss_status
   NSS_STATUS_NOTFOUND,
   NSS_STATUS_SUCCESS,
   NSS_STATUS_RETURN
+}
+
+#[repr(C)]
+pub struct group
+{
+    pub gr_name: *mut c_char,
+    pub gr_passwd: *mut c_char,
+    pub gr_gid: gid_t,
+    pub gr_mem: *mut *mut c_char,
+}
+
+#[repr(C)]
+pub struct spwd
+{
+    pub sp_namp: *mut c_char,
+    pub sp_pwdp: *mut c_char,
+    pub sp_lstchg: c_long,
+    pub sp_min: c_long,
+    pub sp_max: c_long,
+    pub sp_warn: c_long,
+    pub sp_inact: c_long,
+    pub sp_expire: c_long,
+    pub sp_flag: c_ulong,
 }
 
 #[derive(Debug)]
@@ -98,4 +125,49 @@ pub struct AlexandriaPassword {
     pub pw_gecos: String,
     pub pw_dir: String,
     pub pw_shell: String,
+}
+
+/*
+{
+  "gr_name": "testgroup1",
+  "gr_gid": 6000,
+  "gr_passwd": "x",
+  "gr_mem": [
+    "testuser1",
+    "testuser2"
+  ]
+}
+*/
+#[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
+pub struct AlexandriaGroup {
+    pub gr_name: String,
+    pub gr_gid: u32,
+    pub gr_passwd: String,
+    pub gr_mem: Vec<String>,
+}
+
+/*
+{
+  "sp_pwdp": "$1$BXZIu72k$S7oxt9hBiBl/O3Rm3H4Q30",
+  "sp_expire": 0,
+  "sp_lstchg": 16034,
+  "sp_inact": 0,
+  "sp_flag": 0,
+  "sp_min": 0,
+  "sp_max": 99999,
+  "sp_warn": 7,
+  "sp_namp": "testuser1"
+}
+*/
+#[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
+pub struct AlexandriaShadow {
+    pub sp_namp: String,
+    pub sp_pwdp: String,
+    pub sp_lstchg: i32,
+    pub sp_min: i32,
+    pub sp_max: i32,
+    pub sp_warn: i32,
+    pub sp_inact: i32,
+    pub sp_expire: i32,
+    pub sp_flag: u32,
 }
