@@ -261,3 +261,79 @@ pub fn write_group(e: AlexandriaGroup, result: *mut group, mut buffer: *mut c_ch
     // errnop does not need to be set
     return NSS_STATUS_SUCCESS;
 }
+
+pub fn write_shadow(e: AlexandriaShadow, result: *mut spwd, mut buffer: *mut c_char, buflen: size_t, mut errnop: *mut c_int) -> nss_status {
+    let next_buf = &mut buffer;
+    let mut bufleft = buflen;
+
+    // let's carefully craft C strings here:
+    // - NSS is expecting ERANGE in errnop only if the buffer is too small
+    // - however, we still want to try again, so we do the following for error handling:
+    // - NSS_STATUS_TRYAGAIN to retry
+    // - ENOMEM for errnop
+    // TODO: a macro could make that part shorter
+
+    // sp_namp
+    let sp_namp_len = e.sp_namp.len();
+    let cstr_sp_namp = match CString::new(e.sp_namp) {
+        Ok(cstr) => cstr,
+        Err(_) => {
+            unsafe { *errnop = ENOMEM; }
+            return NSS_STATUS_TRYAGAIN;
+        },
+    };
+
+    // sp_pwdp
+    let sp_pwdp_len = e.sp_pwdp.len();
+    let cstr_sp_pwdp = match CString::new(e.sp_pwdp) {
+        Ok(cstr) => cstr,
+        Err(_) => {
+            unsafe { *errnop = ENOMEM; }
+            return NSS_STATUS_TRYAGAIN;
+        }
+    };
+
+    // clear buffer with NUL bytes
+    unsafe { write_bytes(*next_buf, 0, buflen as usize); }
+
+    if bufleft <= sp_namp_len {
+        // the buffer is not big enough
+        // the glibc NSS documentation demands errnop to be ERANGE
+        // and to return with NSS_STATUS_TRYAGAIN
+        // see: http://www.gnu.org/software/libc/manual/html_node/NSS-Modules-Interface.html#NSS-Modules-Interface
+        unsafe { *errnop = ERANGE; }
+        return NSS_STATUS_TRYAGAIN;
+    }
+    unsafe {
+        // as_ptr() *MUST* be called inside the unsafe block!
+        (*result).sp_namp = strncpy(*next_buf, cstr_sp_namp.as_ptr(), sp_namp_len);
+        *next_buf = next_buf.offset(sp_namp_len as isize + 1)
+    }
+    bufleft -= sp_namp_len + 1;
+
+    if bufleft <= sp_pwdp_len {
+        // see above
+        unsafe { *errnop = ERANGE; }
+        return NSS_STATUS_TRYAGAIN;
+    }
+    unsafe {
+        // as_ptr() *MUST* be called inside the unsafe block!
+        (*result).sp_pwdp = strncpy(*next_buf, cstr_sp_pwdp.as_ptr(), sp_pwdp_len);
+        //*next_buf = next_buf.offset(sp_pwdp_len as isize  + 1)
+    }
+    //bufleft -= sp_pwdp_len + 1;
+
+    unsafe {
+        (*result).sp_lstchg = e.sp_lstchg;
+        (*result).sp_min = e.sp_min;
+        (*result).sp_max = e.sp_max;
+        (*result).sp_warn = e.sp_warn;
+        (*result).sp_inact = e.sp_inact;
+        (*result).sp_expire = e.sp_expire;
+        (*result).sp_flag = e.sp_flag;
+    }
+
+    // successfully written everytying to result and buffer
+    // errnop does not need to be set
+    return NSS_STATUS_SUCCESS;
+}

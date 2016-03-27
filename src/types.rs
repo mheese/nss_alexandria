@@ -163,11 +163,11 @@ pub struct AlexandriaGroup {
 pub struct AlexandriaShadow {
     pub sp_namp: String,
     pub sp_pwdp: String,
-    pub sp_lstchg: i32,
-    pub sp_min: i32,
-    pub sp_max: i32,
-    pub sp_warn: i32,
-    pub sp_inact: i32,
-    pub sp_expire: i32,
-    pub sp_flag: u32,
+    pub sp_lstchg: i64,
+    pub sp_min: i64,
+    pub sp_max: i64,
+    pub sp_warn: i64,
+    pub sp_inact: i64,
+    pub sp_expire: i64,
+    pub sp_flag: u64,
 }

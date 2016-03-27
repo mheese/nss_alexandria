@@ -14,13 +14,14 @@
 - DONE: implement C group type (because currently not in libc)
 - DONE: implement C shadow type (because currently not in libc)
 - DONE: implement write_group
-- implement write_shadow
+- DONE: implement write_shadow
 - DONE: implement group route
 - DONE: implement group_uid route
 - DONE: implement group_name route
-- implement shadow route
-- implement shadow_name route
-- implement all nss_alexandria C functions
+- DONE: implement shadow route
+- DONE: implement shadow_name route
+- DONE: implement all nss_alexandria C functions for group DB
+- DONE: implement all nss_alexandria C functions for shadow DB
 - DONE: bump version in Cargo.toml
 - add GPL v3 preamble to all files
 
