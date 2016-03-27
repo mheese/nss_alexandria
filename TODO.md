@@ -23,7 +23,7 @@
 - DONE: implement all nss_alexandria C functions for group DB
 - DONE: implement all nss_alexandria C functions for shadow DB
 - DONE: bump version in Cargo.toml
-- add GPL v3 preamble to all files
+- DONE: add GPL v3 preamble to all files and add license file 
 
 ### for v0.3.0: *move to unix sockets*
 - move HTTP service requests to UNIX sockets
