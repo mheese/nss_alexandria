@@ -1,7 +1,7 @@
 ## TODOs
 
 ### for v0.3.0: *move to unix sockets*
-- BUG: research and fix why sudo crashes libc now
+- DONE: BUG: research and fix why sudo crashes libc now
 - move HTTP service requests to UNIX sockets
 - implement own socket files for different databases
 - shadow database needs 2 socket types:

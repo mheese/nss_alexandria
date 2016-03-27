@@ -131,6 +131,7 @@ pub extern "C" fn _nss_alexandria_endpwent() -> nss_status {
 
         if !PWD_LIST.is_null() {
             drop(Box::from_raw(PWD_LIST));
+            PWD_LIST = std::ptr::null_mut::<DbList<AlexandriaPassword>>();
         }
     }
 
@@ -280,6 +281,7 @@ pub extern "C" fn _nss_alexandria_endgrent() -> nss_status {
 
         if !GRP_LIST.is_null() {
             drop(Box::from_raw(GRP_LIST));
+            GRP_LIST = std::ptr::null_mut::<DbList<AlexandriaGroup>>();
         }
     }
 
@@ -427,6 +429,7 @@ pub extern "C" fn _nss_alexandria_endspent() -> nss_status {
 
         if !SPWD_LIST.is_null() {
             drop(Box::from_raw(SPWD_LIST));
+            SPWD_LIST = std::ptr::null_mut::<DbList<AlexandriaShadow>>();
         }
     }
 
