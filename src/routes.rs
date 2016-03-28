@@ -19,14 +19,17 @@ use std::io::Read;
 use std::time::Duration;
 use libc::uid_t;
 use libc::gid_t;
+use libc::geteuid;
 use hyper::{Client};
 use hyper::status::StatusCode;
+use hyperlocal::{DomainUrl, UnixSocketConnector};
 use rustc_serialize::json;
 use config::PASSWD_URL;
 use config::GROUP_URL;
 use config::SHADOW_URL;
 use config::HTTP_READ_TIMEOUT_MS;
 use config::HTTP_WRITE_TIMEOUT_MS;
+use config::{SOCKET_PATH, SOCKET_PATH_PRIV};
 use types::AlexandriaGroup;
 use types::AlexandriaPassword;
 use types::AlexandriaShadow;
@@ -35,13 +38,13 @@ use types::AlexandriaSvcError;
 
 pub fn passwd() -> Result<Vec<AlexandriaPassword>, AlexandriaSvcError> {
     let client = {
-        let mut c = Client::new();
+        let mut c = Client::with_connector(UnixSocketConnector);
         c.set_read_timeout(Some(Duration::from_millis(HTTP_READ_TIMEOUT_MS)));
         c.set_write_timeout(Some(Duration::from_millis(HTTP_WRITE_TIMEOUT_MS)));
         c
     };
 
-    let mut response = try!(client.get(PASSWD_URL).send());
+    let mut response = try!(client.get(DomainUrl::new(SOCKET_PATH, PASSWD_URL)).send());
     if response.status == StatusCode::NotFound {
         return Ok(vec![]);
     }
@@ -54,13 +57,13 @@ pub fn passwd() -> Result<Vec<AlexandriaPassword>, AlexandriaSvcError> {
 
 pub fn passwd_uid(uid: uid_t) -> Result<Option<AlexandriaPassword>, AlexandriaSvcError> {
     let client = {
-        let mut c = Client::new();
+        let mut c = Client::with_connector(UnixSocketConnector);
         c.set_read_timeout(Some(Duration::from_millis(HTTP_READ_TIMEOUT_MS)));
         c.set_write_timeout(Some(Duration::from_millis(HTTP_WRITE_TIMEOUT_MS)));
         c
     };
     let url = format!("{}?uid={}", PASSWD_URL, uid);
-    let mut response = try!(client.get(url.as_str()).send());
+    let mut response = try!(client.get(DomainUrl::new(SOCKET_PATH, url.as_str())).send());
     if response.status == StatusCode::NotFound {
         return Ok(None)
     }
@@ -72,13 +75,13 @@ pub fn passwd_uid(uid: uid_t) -> Result<Option<AlexandriaPassword>, AlexandriaSv
 
 pub fn passwd_name(name: &str) -> Result<Option<AlexandriaPassword>, AlexandriaSvcError> {
     let client = {
-        let mut c = Client::new();
+        let mut c = Client::with_connector(UnixSocketConnector);
         c.set_read_timeout(Some(Duration::from_millis(HTTP_READ_TIMEOUT_MS)));
         c.set_write_timeout(Some(Duration::from_millis(HTTP_WRITE_TIMEOUT_MS)));
         c
     };
     let url = format!("{}?name={}", PASSWD_URL, name);
-    let mut response = try!(client.get(url.as_str()).send());
+    let mut response = try!(client.get(DomainUrl::new(SOCKET_PATH, url.as_str())).send());
     if response.status == StatusCode::NotFound {
         return Ok(None)
     }
@@ -90,13 +93,13 @@ pub fn passwd_name(name: &str) -> Result<Option<AlexandriaPassword>, AlexandriaS
 
 pub fn group() -> Result<Vec<AlexandriaGroup>, AlexandriaSvcError> {
     let client = {
-        let mut c = Client::new();
+        let mut c = Client::with_connector(UnixSocketConnector);
         c.set_read_timeout(Some(Duration::from_millis(HTTP_READ_TIMEOUT_MS)));
         c.set_write_timeout(Some(Duration::from_millis(HTTP_WRITE_TIMEOUT_MS)));
         c
     };
 
-    let mut response = try!(client.get(GROUP_URL).send());
+    let mut response = try!(client.get(DomainUrl::new(SOCKET_PATH, GROUP_URL)).send());
     if response.status == StatusCode::NotFound {
         return Ok(vec![]);
     }
@@ -109,13 +112,13 @@ pub fn group() -> Result<Vec<AlexandriaGroup>, AlexandriaSvcError> {
 
 pub fn group_gid(gid: gid_t) -> Result<Option<AlexandriaGroup>, AlexandriaSvcError> {
     let client = {
-        let mut c = Client::new();
+        let mut c = Client::with_connector(UnixSocketConnector);
         c.set_read_timeout(Some(Duration::from_millis(HTTP_READ_TIMEOUT_MS)));
         c.set_write_timeout(Some(Duration::from_millis(HTTP_WRITE_TIMEOUT_MS)));
         c
     };
     let url = format!("{}?gid={}", GROUP_URL, gid);
-    let mut response = try!(client.get(url.as_str()).send());
+    let mut response = try!(client.get(DomainUrl::new(SOCKET_PATH, url.as_str())).send());
     if response.status == StatusCode::NotFound {
         return Ok(None)
     }
@@ -127,13 +130,13 @@ pub fn group_gid(gid: gid_t) -> Result<Option<AlexandriaGroup>, AlexandriaSvcErr
 
 pub fn group_name(name: &str) -> Result<Option<AlexandriaGroup>, AlexandriaSvcError> {
     let client = {
-        let mut c = Client::new();
+        let mut c = Client::with_connector(UnixSocketConnector);
         c.set_read_timeout(Some(Duration::from_millis(HTTP_READ_TIMEOUT_MS)));
         c.set_write_timeout(Some(Duration::from_millis(HTTP_WRITE_TIMEOUT_MS)));
         c
     };
     let url = format!("{}?name={}", GROUP_URL, name);
-    let mut response = try!(client.get(url.as_str()).send());
+    let mut response = try!(client.get(DomainUrl::new(SOCKET_PATH, url.as_str())).send());
     if response.status == StatusCode::NotFound {
         return Ok(None)
     }
@@ -144,14 +147,23 @@ pub fn group_name(name: &str) -> Result<Option<AlexandriaGroup>, AlexandriaSvcEr
 }
 
 pub fn shadow() -> Result<Vec<AlexandriaShadow>, AlexandriaSvcError> {
+    // shadow route is only allowed with an effective UID of 0 (root)
+    // return empty otherwise
+    // NOTE: the *real* security is implemented by using a different socket which must have the
+    //       permissions set to 700. This is just to short-circuit and not return with an error.
+    let euid = unsafe { geteuid() };
+    if euid != 0 {
+        return Ok(vec![]);
+    }
+
     let client = {
-        let mut c = Client::new();
+        let mut c = Client::with_connector(UnixSocketConnector);
         c.set_read_timeout(Some(Duration::from_millis(HTTP_READ_TIMEOUT_MS)));
         c.set_write_timeout(Some(Duration::from_millis(HTTP_WRITE_TIMEOUT_MS)));
         c
     };
 
-    let mut response = try!(client.get(SHADOW_URL).send());
+    let mut response = try!(client.get(DomainUrl::new(SOCKET_PATH_PRIV, SHADOW_URL)).send());
     if response.status == StatusCode::NotFound {
         return Ok(vec![]);
     }
@@ -163,14 +175,23 @@ pub fn shadow() -> Result<Vec<AlexandriaShadow>, AlexandriaSvcError> {
 }
 
 pub fn shadow_name(name: &str) -> Result<Option<AlexandriaShadow>, AlexandriaSvcError> {
+    // shadow route is only allowed with an effective UID of 0 (root)
+    // return empty otherwise
+    // NOTE: the *real* security is implemented by using a different socket which must have the
+    //       permissions set to 700. This is just to short-circuit and not return with an error.
+    let euid = unsafe { geteuid() };
+    if  euid != 0 {
+        return Ok(None);
+    }
+
     let client = {
-        let mut c = Client::new();
+        let mut c = Client::with_connector(UnixSocketConnector);
         c.set_read_timeout(Some(Duration::from_millis(HTTP_READ_TIMEOUT_MS)));
         c.set_write_timeout(Some(Duration::from_millis(HTTP_WRITE_TIMEOUT_MS)));
         c
     };
     let url = format!("{}?name={}", SHADOW_URL, name);
-    let mut response = try!(client.get(url.as_str()).send());
+    let mut response = try!(client.get(DomainUrl::new(SOCKET_PATH_PRIV, url.as_str())).send());
     if response.status == StatusCode::NotFound {
         return Ok(None)
     }

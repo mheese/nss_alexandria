@@ -20,13 +20,14 @@ name = "nss_alexandria"
 version = "0.2.0"
 authors = ["Marcus Heese <marcus.heese@gmail.com>"]
 license = "GPL-3.0"
-repository = "https://github.com/mheese/nss_alexandria"
+repository = "https://github.com/mheese/nss_alexandria.git"
 keywords = ["nss", "alexandria"]
 description = "A NSS library for the Alexandria Directory"
 
 [dependencies]
 libc = { version = "0.2", default-features = false }
 hyper = { version = "0.8", default-features = false }
+hyperlocal = { version = "0.1", default-features = false, git = "https://github.com/mheese/hyperlocal.git" }
 rustc-serialize = { version = "0.3", default-features = false }
 
 [lib]

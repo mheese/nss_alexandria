@@ -20,6 +20,7 @@
 
 extern crate rustc_serialize;
 extern crate hyper;
+extern crate hyperlocal;
 extern crate libc;
 
 mod types;

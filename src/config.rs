@@ -15,8 +15,10 @@
 // You should have received a copy of the GNU General Public License
 // along with nss_alexandria.  If not, see <http://www.gnu.org/licenses/>.
 
-pub const PASSWD_URL: &'static str = "http://localhost:9669/passwd";
-pub const GROUP_URL: &'static str = "http://localhost:9669/group";
-pub const SHADOW_URL: &'static str = "http://localhost:9669/shadow";
+pub const SOCKET_PATH: &'static str = "/var/lib/alexandria/nss.sock";
+pub const SOCKET_PATH_PRIV: &'static str = "/var/lib/alexandria/nss_priv.sock";
+pub const PASSWD_URL: &'static str = "/passwd";
+pub const GROUP_URL: &'static str = "/group";
+pub const SHADOW_URL: &'static str = "/shadow";
 pub const HTTP_READ_TIMEOUT_MS: u64 = 100;
 pub const HTTP_WRITE_TIMEOUT_MS: u64 = 100;
