@@ -1,3 +1,13 @@
+### v0.3.0
+
+*GOALS:*
+- move to unix sockets
+
+These were the features/things implemented and bugs fixed for this version:
+- FIX: research and fix why sudo crashes libc now (double-free error)
+- DONE: move HTTP service requests to UNIX sockets
+- DONE: shadow needs own socket with root only access
+
 ### v0.2.0
 
 *GOALS:*
